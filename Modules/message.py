@@ -52,7 +52,6 @@ async def webhook(channel,title, url, name="Equality", avatar_url="", embed_url=
 
 
 async def process_command(message):
-    print(message.content)
     if message.content.startswith(builtins.config["MAIN"]["defualtcommandsymbol"]) and not message.author.bot :
         try:
             print( message.content)
