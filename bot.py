@@ -45,7 +45,6 @@ else:
 
 
 async def LoadModules(mod):
-    print(mod)
     try:
         Module = [ m for m in builtins.Module if mod in m ]
         if Module:

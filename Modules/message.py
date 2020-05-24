@@ -34,20 +34,21 @@ async def response(mobject, responseType, responsiveDesc, *extras):
     await responsemessage.delete(delay=DELAY + 10)
     await mobject.delete(delay=DELAY + 10)
 
-async def webhook(channel,title, url, name="Equality", avatar_url="", embed_url="", variables = {}, footer = ''):
+async def webhook(channel,title, url, name="Equality", avatar_url="", embed_url="", variables = {}, footer = '', description=''):
     webhook = await channel.create_webhook(name=name)
-    embed = discord.Embed(title=title, url=embed_url, description=embed_url)
+    embed = discord.Embed(title=title, url=embed_url, description=description+'\n'+embed_url)
     for variable in variables:
         embed.add_field(name=variable, value=variables[variable],inline=True)
     embed.set_footer(text=footer + "    Done by Discolity")
-    if '.jpg' in url or '.png' in url or '.gif' in url:
+    if ('.jpg' in url or '.png' in url or '.gif' in url or '.mp4') and not 'temp/' in url:
         url = url.replace('gifv','gif') if '.gifv' in url else url
         embed.set_image(url=url)
         url = ""
     await webhook.send(username=name,avatar_url=avatar_url,embed=embed)
-    if url:
+    if 'temp/' in url:
+        await webhook.send(file=discord.File(open(url,'rb')))
+    elif url:
         await webhook.send(url)
-
     await webhook.delete()
 
 
