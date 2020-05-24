@@ -40,22 +40,23 @@ async def webhook(channel,title, url, name="Equality", avatar_url="", embed_url=
     for variable in variables:
         embed.add_field(name=variable, value=variables[variable],inline=True)
     embed.set_footer(text=footer + "    Done by Discolity")
-    if ('.jpg' in url or '.png' in url or '.gif' in url or '.mp4') and not 'temp/' in url:
+    if ('.jpg' in url or '.png' in url or '.gif' in url) and not 'temp/' in url:
         url = url.replace('gifv','gif') if '.gifv' in url else url
         embed.set_image(url=url)
         url = ""
-    await webhook.send(username=name,avatar_url=avatar_url,embed=embed)
     if 'temp/' in url:
+        conv = await channel.send("Send File...")
         await webhook.send(file=discord.File(open(url,'rb')))
+        await conv.delete()
     elif url:
         await webhook.send(url)
+    await webhook.send(username=name,avatar_url=avatar_url,embed=embed)
     await webhook.delete()
 
 
 async def process_command(message):
     if message.content.startswith(builtins.config["MAIN"]["defualtcommandsymbol"]) and not message.author.bot :
         try:
-            print( message.content)
             fixcontent = message.content
             for mention in message.mentions:
                 fixcontent = fixcontent.replace(
@@ -71,6 +72,7 @@ async def process_command(message):
             if command in builtins.commands.keys():
                 print("Processing", command, "command")
                 await builtins.commands[command](message, *args)
+                print("done")
             else:
                 await error(message, "Command Error", "Either this command doesn't exist or the module hasn't been loaded", ["Command Inputted", command])
         except Exception as e:

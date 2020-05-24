@@ -5,6 +5,7 @@ import discord, asyncio
 from urllib.request import urlretrieve
 import ffmpy, os, time, re
 
+Regex = r'(?P<url>https?://(?:[^/]+\.)?reddit\.com/r/[^/]+/comments/(?P<id>[^/?#&]+))'
 async def tempdelete():
     while not builtins.client.is_closed():
         print("Logging | Clearing out Temp File")
@@ -16,17 +17,32 @@ async def tempdelete():
             else:
                 return False
         print("Logging | Done")
-        await asyncio.sleep(300) # task runs every 30 minutes
+        await asyncio.sleep(900) # task runs every 10 minutes
 
 async def scheduleSend():
     while not builtins.client.is_closed():
         for guild in builtins.client.guilds:
-            channel = discord.utils.get(guild.text_channels, name='reddit')
-            if channel:
-                subreddit = reddit.subreddit('nsfw')
-                post = choice(list(subreddit.new(limit=limit)))
-                await builtins.Tools["webhook"](channel, post.title, post.url, subreddit.display_name, subreddit.icon_img, "https://www.reddit.com" + post.permalink, {'Upvotes': str(post.score) + " - " + str(int(post.upvote_ratio * 100)) + "%", "Comments":post.num_comments, "Flair":post.link_flair_text}, "found at https://reddit.com/r/"+ subreddit.display_name + "\nby user https://www.reddit.com/user/" + post.author.name)
-        await asyncio.sleep(1800) # task runs every 30 minutes
+            catagory = discord.utils.get(guild.categories, name='reddit')
+            if not catagory:
+                catagory = await guild.create_category("reddit")
+                print(catagory.name)
+            else:
+                for channel in catagory.text_channels:
+                    async for message in channel.history(limit=1, oldest_first=True):
+                        first_message = message
+                    if "Subs" in first_message.content:
+                        subs = choice("".join(first_message.content.split(":")[1:]).split(",")).strip()
+                    else:
+                        await channel.send("Subs: "+ channel.name)
+                        subs = channel.name
+                    try:
+                        subreddit = reddit.subreddit(subs)
+                        post = choice(list(subreddit.new(limit=limit)))
+                        await converturl(post)
+                        await builtins.Tools["webhook"](channel, post.title, post.url, subreddit.display_name, subreddit.icon_img, "https://www.reddit.com" + post.permalink, {'Upvotes': str(post.score) + " - " + str(int(post.upvote_ratio * 100)) + "%", "Comments":post.num_comments, "Flair":post.link_flair_text}, "found at https://reddit.com/r/"+ subreddit.display_name + "\nby user https://www.reddit.com/user/" + post.author.name)
+                    except:
+                        print(subs,"FAILED")
+        await asyncio.sleep(900) # task runs every 15 minutes
 
 if not 'reddit' in builtins.config:
     builtins.config["reddit"] = dict(client_id='',client_secret='',user_agent='',username='',password='',postsample=20)
@@ -70,24 +86,24 @@ async def PictureFind(message, subreddit, type = '', postsample = limit, *extra,
     if deletemsg:
         await message.delete()
 
-async def formatreddit(message, url, *extra, comment):
-    post = reddit.submission(url=url)
-    subreddit = post.subreddit
-    print(post.media)
-    await converturl(post)
-    await builtins.Tools["webhook"](message.channel, post.title, post.url, subreddit.display_name.title(), subreddit.icon_img, "https://www.reddit.com" + post.permalink, {'Upvotes': str(post.score) + " - " + str(int(post.upvote_ratio * 100)) + "%", "Comments":post.num_comments, "Flair":post.link_flair_text}, "found by "+ message.author.display_name +" at https://reddit.com/r/"+ subreddit.display_name + "\nby user https://www.reddit.com/user/" + post.author.name, comment)
-    await message.delete()
+async def formatreddit(message, url, *extra, comment=""):
+    test = re.search(Regex, url)
+    if test:
+        post = reddit.submission(url=url)
+        subreddit = post.subreddit
+        await converturl(post)
+        await builtins.Tools["webhook"](message.channel, post.title, post.url, subreddit.display_name.title(), subreddit.icon_img, "https://www.reddit.com" + post.permalink, {'Upvotes': str(post.score) + " - " + str(int(post.upvote_ratio * 100)) + "%", "Comments":post.num_comments, "Flair":post.link_flair_text}, "found by "+ message.author.display_name +" at https://reddit.com/r/"+ subreddit.display_name + "\nby user https://www.reddit.com/user/" + post.author.name, comment)
+        await message.delete()
+    else:
+        await builtins.Tools["errormsg"](message, "Known URL", "Please use reddit submission links eg `https://reddit.com/r/subreddit/comments/postid`",["Inputted URL",url])
 
 async def isRedditurl(message):
-    try:
-        url = re.search("(?P<url>https?://[^\s]+)", message.content).group("url")
-        if (not (message.author.bot or message.content.startswith(builtins.config["MAIN"]["defualtcommandsymbol"]))) and "reddit.com/r/" in url and '/comments/' in url:
-            await formatreddit(message, url, comment=message.content.replace(url,""))
-    except:
-        pass
+    url = re.search(Regex, message.content)
+    if (not (message.author.bot or message.content.startswith(builtins.config["MAIN"]["defualtcommandsymbol"]))) and url:
+        await formatreddit(message, url.group(), comment=message.content.replace(url.group(),""))
 
 async def __init__():
     builtins.commands.update( {"reddit":PictureFind, "freddit":formatreddit} )
     builtins.events["on_message"].append( isRedditurl )
-    await builtins.client.loop.create_task(tempdelete())
-    await builtins.client.loop.create_task(scheduleSend())
+    builtins.client.loop.create_task(tempdelete())
+    builtins.client.loop.create_task(scheduleSend())
