@@ -1,4 +1,4 @@
-import discord, builtins, os, importlib, traceback, configparser, dataset
+import discord, builtins, os, importlib, traceback, configparser, dataset, Log
 
 
 ModuleFolder = "Modules"
@@ -55,11 +55,11 @@ async def LoadModules(mod):
                 Module[1] = importlib.import_module(ModuleFolder + "." + Module[0])
             await Module[1].__init__()
             return 0
-        print("Error: No Module")
+        Log.Warning("Module", mod, "was not found in", ModuleFolder, "therefore couldn't be loaded")
         return 1
     except Exception as e:
         Module[1] = 1
-        print("".join(traceback.format_exception_only(e.__class__, e)))
+        Log.Error(traceback.format_exc())
         return 2
 
 builtins.Tools = {"LoadModules":LoadModules}
@@ -70,12 +70,13 @@ async def on_ready():
     for Modules in builtins.config["default_modules"]:
         if builtins.config["default_modules"][Modules] == 'True':
             await LoadModules(Modules)
-
     for event in builtins.events["on_ready"]:
         await event()
+    Log.Success("Bot is ready\nwith", len(builtins.Module),"Loaded Modules")
 
 @builtins.client.event
 async def on_member_join(member):
+    await member.add_roles(sorted(await member.guild.fetch_roles(), key=lambda robj: robj.position)[-2], reason=None, atomic=True)
     for event in builtins.events["on_member_join"]:
         await event(member)
 
